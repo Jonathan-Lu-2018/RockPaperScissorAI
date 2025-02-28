@@ -26,44 +26,53 @@ while True:
         print("Failed to capture image")
         break
 
-    '''
-    OG code
-    # imgScaled = cv2.resize(img,(0,0),None,0.875,0.875)
-    # imgScaled = imgScaled[:, 80:480]
-    # imgBG[234:654,795:1195] = imgScaled
-    '''
     # Resize the webcam frame
     imgScaled = cv2.resize(img, (400, 420))
 
-    # Locate hands
-    hands, img = detector.findHands(imgScaled)
+    # Locate hands and draw default hand info (by cvzone, this might show left/right)
+    hands, imgScaled = detector.findHands(imgScaled)
+
+    # If a hand is detected, determine the gesture and overlay its name
+    if hands:
+        hand = hands[0]
+        fingers = detector.fingersUp(hand)
+        # Determine the gesture based on finger positions
+        if fingers == [0, 0, 0, 0, 0]:
+            gesture = "Rock"
+        elif fingers == [1, 1, 1, 1, 1]:
+            gesture = "Paper"
+        elif fingers == [0, 1, 1, 0, 0]:
+            gesture = "Scissors"
+        else:
+            gesture = "Unknown"
+        # Extract the hand's bounding box to position the text
+        x, y, w, h = hand['bbox']
+        cv2.putText(imgScaled, gesture, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     if startGame:
         if stateResult is False:
-
-            # Initalizes the timer & displays it on the screen
+            # Initialize and display the timer on the background
             timer = time.time() - intialTime
-            cv2.putText(imgBG, str(int(timer)), (605, 435), cv2.FONT_HERSHEY_PLAIN,6,(255,0,255), 4)
+            cv2.putText(imgBG, str(int(timer)), (605, 435), cv2.FONT_HERSHEY_PLAIN, 6, (255, 0, 255), 4)
 
-            # Stops timer at 3 seconds
+            # Stop timer at 3 seconds and process the move
             if timer > 3:
                 stateResult = True
                 timer = 0
 
-                # Determines the hand signal
                 if hands:
                     playerMove = None
                     hand = hands[0]
                     fingers = detector.fingersUp(hand)
+                    
+                    if fingers == [0, 0, 0, 0, 0]:
+                        playerMove = 1  # Rock
+                    elif fingers == [1, 1, 1, 1, 1]:
+                        playerMove = 2  # Paper
+                    elif fingers == [0, 1, 1, 0, 0]:
+                        playerMove = 3  # Scissors
 
-                    if fingers == [0, 0, 0, 0, 0]:      # Rock
-                        playerMove = 1
-                    if fingers == [1, 1, 1, 1, 1]:      # Paper
-                        playerMove = 2
-                    if fingers == [0, 1, 1, 0, 0]:      # Scissor 
-                        playerMove = 3
-
-                    # AI agent to pick a random hand signal
+                    # AI randomly picks a move
                     options = ['rock.png', 'paper.png', 'scissor.png']
                     randomHandSignal = random.choice(options)
                     imgAI = cv2.imread(f'Images/{randomHandSignal}', cv2.IMREAD_UNCHANGED)
@@ -74,18 +83,19 @@ while True:
 
                     imgBG = cvzone.overlayPNG(imgBG, imgAI, (149, 310))
                     
-                    # Player Wins
-                    if (playerMove == 1 and randomHandSignal == 'scissor.png') or (playerMove == 2 and randomHandSignal == 'rock.png') or (playerMove == 3 and randomHandSignal == 'paper.png'):
-                        scores[1] += 1
+                    # Determine winner based on hand signals
+                    if (playerMove == 1 and randomHandSignal == 'scissor.png') or \
+                       (playerMove == 2 and randomHandSignal == 'rock.png') or \
+                       (playerMove == 3 and randomHandSignal == 'paper.png'):
+                        scores[1] += 1  # Player wins
                     
-                    # AI Wins
-                    if (playerMove == 2 and randomHandSignal == 'scissor.png') or (playerMove == 3 and randomHandSignal == 'rock.png') or (playerMove == 1 and randomHandSignal == 'paper.png'):
-                        scores[0] += 1
-                  
-                    #print(playerMove)
+                    if (playerMove == 2 and randomHandSignal == 'scissor.png') or \
+                       (playerMove == 3 and randomHandSignal == 'rock.png') or \
+                       (playerMove == 1 and randomHandSignal == 'paper.png'):
+                        scores[0] += 1  # AI wins
 
-    # Place the resized frame onto the background image
-    imgBG[234:654,795:1195] = imgScaled
+    # Place the resized webcam frame (with gesture text) onto the background image
+    imgBG[234:654, 795:1195] = imgScaled
 
     if stateResult:
         imgBG = cvzone.overlayPNG(imgBG, imgAI, (149, 310))
@@ -93,25 +103,15 @@ while True:
     cv2.putText(imgBG, str(scores[0]), (410, 215), cv2.FONT_HERSHEY_PLAIN, 4, (255, 255, 255), 6)
     cv2.putText(imgBG, str(scores[1]), (1112, 215), cv2.FONT_HERSHEY_PLAIN, 4, (255, 255, 255), 6)
 
-    # Capture frame
-    success, img = cap.read()
-    if not success:
-        print("Failed to capture image")
-        break
-    
-    # Display frame
     cv2.imshow("BG", imgBG)
-    #cv2.imshow("Scaled", imgScaled)
 
-    # Start the game with 's' key
     key = cv2.waitKey(1)
     if key == ord('s'):
         startGame = True
         intialTime = time.time()
         stateResult = False
 
-    # Exit on pressing 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if key == ord('q'):
         break
 
 # Release resources
