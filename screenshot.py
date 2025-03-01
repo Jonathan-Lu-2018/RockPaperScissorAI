@@ -5,9 +5,14 @@ import time
 import random
 import os
 
+
 #Directory to store the screenshots
 screenshot_folder = "Screenshot"
 
+# Create the directory if it doesn't exist
+if not os.path.exists(screenshot_folder):
+    os.makedirs(screenshot_folder)
+    
 cap = cv2.VideoCapture(0)
 cap.set(3, 640)
 cap.set(4, 480)
