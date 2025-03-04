@@ -12,3 +12,7 @@ Steps to run our code in a virtual environment from terminal:
         venv\Scripts\activate
 3) pip install -r requirements.txt
 4) python3.10 main.py
+
+Once the program is running the controls are:
+Press the 'S' key to start a round of Rock, Paper, Scissors.
+Press the 'Q' key to stop the program.
