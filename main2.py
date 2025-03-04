@@ -3,6 +3,15 @@ import cvzone
 from cvzone.HandTrackingModule import HandDetector
 import time
 import random
+import os
+
+
+# Directory to store the screenshots
+screenshot_folder = "Dataset"
+
+# Create the directory if it doesn't exist
+if not os.path.exists(screenshot_folder):
+    os.makedirs(screenshot_folder)
 
 cap = cv2.VideoCapture(0)
 cap.set(3, 640)
@@ -14,6 +23,7 @@ detector = HandDetector(maxHands=1)
 timer = 0
 stateResult = False 
 startGame = False
+screenshotTaken = False
 quit_start = None
 roundEndTime = None  # Cooldown timer after each round
 
@@ -28,12 +38,9 @@ while True:
         print("Failed to capture image")
         break
 
-    '''
-    OG code
-    # imgScaled = cv2.resize(img,(0,0),None,0.875,0.875)
-    # imgScaled = imgScaled[:, 80:480]
-    # imgBG[234:654,795:1195] = imgScaled
-    '''
+    # Saving an original raw frame
+    imgOriginal = img.copy()
+
     # Resize the webcam frame
     imgScaled = cv2.resize(img, (400, 420))
 
@@ -76,44 +83,50 @@ while True:
                 stateResult = True
                 timer = 0
 
+                # Determines the hand signal
                 if hands:
                     playerMove = None
                     hand = hands[0]
                     fingers = detector.fingersUp(hand)
 
-                    if fingers == [0, 0, 0, 0, 0]:  # Rock
+                    if fingers == [0, 0, 0, 0, 0]:      # Rock
                         playerMove = 1
-                    if fingers == [1, 1, 1, 1, 1]:  # Paper
+                    if fingers == [1, 1, 1, 1, 1]:      # Paper
                         playerMove = 2
-                    if fingers == [0, 1, 1, 0, 0]:  # Scissors
+                    if fingers == [0, 1, 1, 0, 0]:      # Scissor 
                         playerMove = 3
 
+                    # AI agent to pick a random hand signal
                     options = ['rock.png', 'paper.png', 'scissor.png']
                     randomHandSignal = random.choice(options)
                     imgAI = cv2.imread(f'Images/{randomHandSignal}', cv2.IMREAD_UNCHANGED)
-
+                    
                     if imgAI is None:
                         print(f"Failed to load image: {randomHandSignal}")
                         break
 
                     imgBG = cvzone.overlayPNG(imgBG, imgAI, (149, 310))
                     
-                    if (playerMove == 1 and randomHandSignal == 'scissor.png') or \
-                       (playerMove == 2 and randomHandSignal == 'rock.png') or \
-                       (playerMove == 3 and randomHandSignal == 'paper.png'):
+                    # Determine the round result and update scores
+                    # Player Wins
+                    if (playerMove == 1 and randomHandSignal == 'scissor.png') or (playerMove == 2 and randomHandSignal == 'rock.png') or (playerMove == 3 and randomHandSignal == 'paper.png'):
                         scores[1] += 1
                     
-                    if (playerMove == 2 and randomHandSignal == 'scissor.png') or \
-                       (playerMove == 3 and randomHandSignal == 'rock.png') or \
-                       (playerMove == 1 and randomHandSignal == 'paper.png'):
+                    # AI Wins
+                    if (playerMove == 2 and randomHandSignal == 'scissor.png') or (playerMove == 3 and randomHandSignal == 'rock.png') or (playerMove == 1 and randomHandSignal == 'paper.png'):
                         scores[0] += 1
+                  
+                    # After scoring, capture a screenshot of the player
+                    if stateResult:
+                        timestamp = int(time.time())
+                        screenshot_filename = os.path.join(screenshot_folder, f'player_{timestamp}.png')
+                        cv2.imwrite(screenshot_filename, imgOriginal) #change this original to scaled
+                        print(f"Screenshot saved as {screenshot_filename}")
 
                 # Reset game state so it waits for a new "Thumbs Up"
                 startGame = False  
                 roundEndTime = currentTime
-                  
-                    #print(playerMove)
-                
+              
 
     # Place the resized frame onto the background image
     imgBG[234:654,795:1195] = imgScaled
@@ -132,7 +145,6 @@ while True:
     
     # Display frame
     cv2.imshow("BG", imgBG)
-    #cv2.imshow("Scaled", imgScaled)
 
     # Start the game with 's' key
     key = cv2.waitKey(1)
