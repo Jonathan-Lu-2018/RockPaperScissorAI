@@ -24,6 +24,8 @@ timer = 0
 stateResult = False 
 startGame = False
 screenshotTaken = False
+quit_start = None
+roundEndTime = None  # Cooldown timer after each round
 
 # One score for AI & one score for Player
 scores = [0, 0]
@@ -42,50 +44,59 @@ while True:
     # Resize the webcam frame
     imgScaled = cv2.resize(img, (400, 420))
 
-    # Locate hands and draw default hand info (by cvzone, this might show left/right)
-    hands, imgScaled = detector.findHands(imgScaled)
+    # Locate hands
+    hands, img = detector.findHands(imgScaled)
 
-    # If a hand is detected, determine the gesture and overlay its name
+    currentTime = time.time()
+
     if hands:
         hand = hands[0]
         fingers = detector.fingersUp(hand)
-        # Determine the gesture based on finger positions
-        if fingers == [0, 0, 0, 0, 0]:
-            gesture = "Rock"
-        elif fingers == [1, 1, 1, 1, 1]:
-            gesture = "Paper"
-        elif fingers == [0, 1, 1, 0, 0]:
-            gesture = "Scissors"
+
+        # Detect start gesture (thumbs up)
+        if fingers == [1, 0, 0, 0, 0]:  
+            if not startGame and (roundEndTime is None or currentTime - roundEndTime > 2):  # 2-second cooldown
+                print("Game started!")
+                startGame = True
+                initialTime = time.time()
+                stateResult = False 
+
+        # Detect quit gesture (2 seconds)
+        if fingers == [1, 0, 0, 0, 1]:  
+            if quit_start is None:  # Start quit timer
+                quit_start = time.time()
+            elif time.time() - quit_start > 2:
+                print("Exiting the game!")
+                break
         else:
-            gesture = "Unknown"
-        # Extract the hand's bounding box to position the text
-        x, y, w, h = hand['bbox']
-        cv2.putText(imgScaled, gesture, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            quit_start = None  # Reset quit timer if hand is not a shaka sign
 
     if startGame:
         if stateResult is False:
-            # Initialize and display the timer on the background
-            timer = time.time() - intialTime
-            cv2.putText(imgBG, str(int(timer)), (605, 435), cv2.FONT_HERSHEY_PLAIN, 6, (255, 0, 255), 4)
 
-            # Stop timer at 3 seconds and process the move
+            # Initalizes the timer & displays it on the screen
+            timer = time.time() - initialTime
+            cv2.putText(imgBG, str(int(timer)), (605, 435), cv2.FONT_HERSHEY_PLAIN,6,(255,0,255), 4)
+
+            # Stops timer at 3 seconds
             if timer > 3:
                 stateResult = True
                 timer = 0
 
+                # Determines the hand signal
                 if hands:
                     playerMove = None
                     hand = hands[0]
                     fingers = detector.fingersUp(hand)
-                    
-                    if fingers == [0, 0, 0, 0, 0]:
-                        playerMove = 1  # Rock
-                    elif fingers == [1, 1, 1, 1, 1]:
-                        playerMove = 2  # Paper
-                    elif fingers == [0, 1, 1, 0, 0]:
-                        playerMove = 3  # Scissors
 
-                    # AI randomly picks a move
+                    if fingers == [0, 0, 0, 0, 0]:      # Rock
+                        playerMove = 1
+                    if fingers == [1, 1, 1, 1, 1]:      # Paper
+                        playerMove = 2
+                    if fingers == [0, 1, 1, 0, 0]:      # Scissor 
+                        playerMove = 3
+
+                    # AI agent to pick a random hand signal
                     options = ['rock.png', 'paper.png', 'scissor.png']
                     randomHandSignal = random.choice(options)
                     imgAI = cv2.imread(f'Images/{randomHandSignal}', cv2.IMREAD_UNCHANGED)
@@ -111,10 +122,14 @@ while True:
                         screenshot_filename = os.path.join(screenshot_folder, f'player_{timestamp}.png')
                         cv2.imwrite(screenshot_filename, imgOriginal) #change this original to scaled
                         print(f"Screenshot saved as {screenshot_filename}")
-                   
 
-    # Place the resized webcam frame (with gesture text) onto the background image
-    imgBG[234:654, 795:1195] = imgScaled
+                # Reset game state so it waits for a new "Thumbs Up"
+                startGame = False  
+                roundEndTime = currentTime
+              
+
+    # Place the resized frame onto the background image
+    imgBG[234:654,795:1195] = imgScaled
 
     if stateResult:
         imgBG = cvzone.overlayPNG(imgBG, imgAI, (149, 310))
@@ -122,15 +137,24 @@ while True:
     cv2.putText(imgBG, str(scores[0]), (410, 215), cv2.FONT_HERSHEY_PLAIN, 4, (255, 255, 255), 6)
     cv2.putText(imgBG, str(scores[1]), (1112, 215), cv2.FONT_HERSHEY_PLAIN, 4, (255, 255, 255), 6)
 
+    # Capture frame
+    success, img = cap.read()
+    if not success:
+        print("Failed to capture image")
+        break
+    
+    # Display frame
     cv2.imshow("BG", imgBG)
 
+    # Start the game with 's' key
     key = cv2.waitKey(1)
     if key == ord('s'):
         startGame = True
         intialTime = time.time()
         stateResult = False
 
-    if key == ord('q'):
+    # Exit on pressing 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 # Release resources
