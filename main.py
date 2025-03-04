@@ -124,12 +124,14 @@ while True:
 
     cv2.imshow("BG", imgBG)
 
+    # Press s key to start
     key = cv2.waitKey(1)
     if key == ord('s'):
         startGame = True
         intialTime = time.time()
         stateResult = False
 
+    # Press q key to quit
     if key == ord('q'):
         break
 
