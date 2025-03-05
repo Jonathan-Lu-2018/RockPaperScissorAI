@@ -1,5 +1,5 @@
-# RockPaperScissorAI
-CMPE 252 AI Project - Aaron Hung, Louis Liu, Jonathan Lu & Kathleen-Ngo Nguyen
+# Rock-Paper-Scissor AI Game
+CMPE 252 AI Project - Aaron Hung, Louis Liu, Jonathan Lu & Kathleen Ngo-Nguyen
 
 ## Prerequisites
 Ensure you are running **Python 3.10** for this project.
